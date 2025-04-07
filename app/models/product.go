@@ -49,3 +49,16 @@ func (p *Product) GetProducts(db *gorm.DB, perPage int, page int) (*[]Product, i
 
 	return &products, totalProducts, nil
 }
+
+func (p *Product) GetProductBySlug(db *gorm.DB, slug string) (*Product, error) {
+	var err error
+	var product Product
+
+	err = db.Debug().Model(&Product{}).Where("slug = ?", slug).First(&product).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &product, nil
+}
