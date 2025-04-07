@@ -1,6 +1,7 @@
 package app
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/learninNdi/gotoko/database/seeders"
+	"github.com/urfave/cli"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -37,10 +39,7 @@ type DBConfig struct {
 func (server *Server) Initialize(appConfig AppConfig, dbConfig DBConfig) {
 	fmt.Println("Welcome to " + appConfig.AppName)
 
-	server.initializeDB(dbConfig)
 	server.initializeRoutes()
-
-	seeders.DBSeed(server.DB)
 }
 
 func (server *Server) Run(addr string) {
@@ -68,9 +67,11 @@ func (server *Server) initializeDB(dbConfig DBConfig) {
 	if err != nil {
 		panic("Failed on connecting to the database server")
 	}
+}
 
+func (server *Server) dbMigrate() {
 	for _, model := range RegisterModels() {
-		err = server.DB.Debug().AutoMigrate(model.Model)
+		err := server.DB.Debug().AutoMigrate(model.Model)
 
 		if err != nil {
 			log.Fatal(err)
@@ -88,6 +89,40 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+func (server *Server) initCommands(dbConfig DBConfig) {
+	server.initializeDB(dbConfig)
+
+	cmdApp := cli.NewApp()
+	cmdApp.Commands = []cli.Command{
+		{
+			Name: "db:migrate",
+			Action: func(c *cli.Context) error {
+				server.dbMigrate()
+
+				return nil
+			},
+		},
+		{
+			Name: "db:seed",
+			Action: func(c *cli.Context) error {
+				err := seeders.DBSeed(server.DB)
+
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				return nil
+			},
+		},
+	}
+
+	err := cmdApp.Run(os.Args)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func Run() {
 	var server = Server{}
 	var appConfig = AppConfig{}
@@ -97,7 +132,7 @@ func Run() {
 	err := godotenv.Load()
 
 	if err != nil {
-		log.Fatal("Error on loading env file")
+		log.Fatalf("Error on loading env file")
 	}
 
 	appConfig.AppName = getEnv("APP_NAME", "GoToko")
@@ -111,6 +146,14 @@ func Run() {
 	dbConfig.DBName = getEnv("DB_NAME", "gotoko_db")
 	dbConfig.DBPort = getEnv("DB_PORT", "5432")
 
-	server.Initialize(appConfig, dbConfig)
-	server.Run(":" + appConfig.AppPort)
+	// receive flag
+	flag.Parse()
+	arg := flag.Arg(0)
+
+	if arg != "" {
+		server.initCommands(dbConfig)
+	} else {
+		server.Initialize(appConfig, dbConfig)
+		server.Run(":" + appConfig.AppPort)
+	}
 }
