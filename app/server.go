@@ -30,6 +30,7 @@ func Run() {
 	}
 
 	appConfig.AppName = getEnv("APP_NAME", "GoToko")
+	appConfig.AppURL = getEnv("APP_URL", "http://localhost:9000")
 	appConfig.AppEnv = getEnv("APP_ENV", "development")
 	appConfig.AppPort = getEnv("APP_PORT", "9000")
 
