@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 	"github.com/learninNdi/gotoko/app/models"
 	"github.com/learninNdi/gotoko/database/seeders"
 	"github.com/urfave/cli"
@@ -60,7 +61,12 @@ type PaginationParams struct {
 	CurrentPage int32
 }
 
+var store *sessions.CookieStore
+
+// var sessionShoppingCart = "shopping-cart-session"
+
 func (server *Server) Initialize(appConfig AppConfig, dbConfig DBConfig) {
+	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 	fmt.Println("Welcome to " + appConfig.AppName)
 
 	server.initializeAppConfig(appConfig)
