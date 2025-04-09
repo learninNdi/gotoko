@@ -62,8 +62,7 @@ type PaginationParams struct {
 }
 
 var store *sessions.CookieStore
-
-// var sessionShoppingCart = "shopping-cart-session"
+var sessionShoppingCart = "shopping-cart-session"
 
 func (server *Server) Initialize(appConfig AppConfig, dbConfig DBConfig) {
 	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))

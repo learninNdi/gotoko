@@ -11,19 +11,11 @@ import (
 )
 
 func (server *Server) GetCart(w http.ResponseWriter, r *http.Request) {
-	var cart *models.Cart
 
-	cartID := GetShoppingCartID(w, r)
-
-	fmt.Println("cart id !==== ", cartID)
-
-	cart, _ = GetShoppingCart(server.DB, cartID)
-
-	fmt.Println("cart id ===== ", cart.ID)
 }
 
 func GetShoppingCartID(w http.ResponseWriter, r *http.Request) string {
-	session, _ := store.Get(r, "shopping-cart-session")
+	session, _ := store.Get(r, sessionShoppingCart)
 
 	fmt.Println(session)
 
@@ -35,9 +27,6 @@ func GetShoppingCartID(w http.ResponseWriter, r *http.Request) string {
 
 	}
 
-	fmt.Println(session)
-	fmt.Println(session.Values["cart-id"])
-
 	return fmt.Sprintf("%v", session.Values["cart-id"])
 }
 
@@ -47,12 +36,11 @@ func GetShoppingCart(db *gorm.DB, cartID string) (*models.Cart, error) {
 	existCart, err := cart.GetCart(db, cartID)
 
 	if err != nil {
-		// fmt.Println("kosong")
 		existCart, _ = cart.CreateCart(db, cartID)
-	} else {
-		// fmt.Println("ga kosong")
 	}
-	// fmt.Println(existCart)
+
+	existCart.CalculateCart(db, cartID)
+
 	return existCart, nil
 }
 
@@ -68,6 +56,17 @@ func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if qty > product.Stock {
+		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
+	}
+
+	cartID := GetShoppingCartID(w, r)
+	cart, _ := GetShoppingCart(server.DB, cartID)
+	_, err = cart.AddItem(server.DB, models.CartItem{
+		ProductID: productID,
+		Qty:       qty,
+	})
+
+	if err != nil {
 		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
 	}
 
