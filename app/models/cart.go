@@ -1,8 +1,6 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -36,7 +34,7 @@ func (c *Cart) CreateCart(db *gorm.DB, cartID string) (*Cart, error) {
 		ID:              cartID,
 		BaseTotalPrice:  decimal.NewFromInt(0),
 		TaxAmount:       decimal.NewFromInt(0),
-		TaxPercent:      decimal.NewFromInt(0),
+		TaxPercent:      decimal.NewFromInt(11),
 		DiscountAmount:  decimal.NewFromInt(0),
 		DiscountPercent: decimal.NewFromInt(0),
 		GrandTotal:      decimal.NewFromInt(0),
@@ -71,8 +69,6 @@ func (c *Cart) AddItem(db *gorm.DB, item CartItem) (*CartItem, error) {
 		Where("product_id = ?", product.ID).
 		First(&existItem).Error
 
-	fmt.Println("=====", existItem)
-
 	if err != nil {
 		subTotal := float64(item.Qty) * (basePrice + taxAmount - discountAmount)
 
@@ -101,8 +97,6 @@ func (c *Cart) AddItem(db *gorm.DB, item CartItem) (*CartItem, error) {
 	subTotal := float64(updateItem.Qty) * (basePrice + taxAmount - discountAmount)
 	updateItem.SubTotal = decimal.NewFromFloat(subTotal)
 
-	// ERROR DI SINI
-	// err = db.Debug().First(&existItem, "id = ?", existItem.ID).Updates(updateItem).Error
 	err = db.Model(&existItem).Updates(updateItem).Error
 
 	if err != nil {
@@ -139,7 +133,6 @@ func (c *Cart) CalculateCart(db *gorm.DB, cartID string) (*Cart, error) {
 	updateCart.DiscountAmount = decimal.NewFromFloat(cartDiscountAmount)
 	updateCart.GrandTotal = decimal.NewFromFloat(cartGrandTotal)
 
-	// err := db.Debug().First(&cart, "id = ?", c.ID).Updates(updateCart).Error
 	err := db.Model(&cart).Where("id = ?", c.ID).Updates(updateCart).Error
 
 	if err != nil {
@@ -147,4 +140,76 @@ func (c *Cart) CalculateCart(db *gorm.DB, cartID string) (*Cart, error) {
 	}
 
 	return &cart, nil
+}
+
+func (c *Cart) UpdateItemQty(db *gorm.DB, itemID string, qty int) (*CartItem, error) {
+	var existItem, updateItem CartItem
+
+	err := db.Debug().Model(CartItem{}).
+		Where("id = ?", itemID).
+		First(&existItem).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var product Product
+
+	err = db.Debug().Model(Product{}).Where("id = ?", existItem.ProductID).First(&product).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	basePrice, _ := product.Price.Float64()
+	taxAmount := GetTaxAmount(basePrice)
+	discountAmount := 0.0
+
+	updateItem.Qty = qty
+	updateItem.BaseTotal = decimal.NewFromFloat(basePrice * float64(updateItem.Qty))
+
+	subTotal := float64(updateItem.Qty) * (basePrice + taxAmount - discountAmount)
+	updateItem.SubTotal = decimal.NewFromFloat(subTotal)
+
+	err = db.Debug().Model(&existItem).Updates(updateItem).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &existItem, nil
+}
+
+func (c *Cart) GetItems(db *gorm.DB, cartID string) ([]CartItem, error) {
+	var items []CartItem
+
+	err := db.Debug().Preload("Product").Model(&CartItem{}).
+		Where("cart_id = ?", cartID).
+		Order("created_at desc").
+		Find(&items).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+func (c *Cart) RemoveItemByID(db *gorm.DB, itemID string) error {
+	var err error
+	var item CartItem
+
+	err = db.Debug().Model(&CartItem{}).Where("id = ?", itemID).First(&item).Error
+
+	if err != nil {
+		return err
+	}
+
+	err = db.Debug().Delete(&item).Error
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

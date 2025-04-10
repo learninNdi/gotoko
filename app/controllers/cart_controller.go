@@ -6,18 +6,31 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/learninNdi/gotoko/app/models"
+	"github.com/unrolled/render"
 	"gorm.io/gorm"
 )
 
 func (server *Server) GetCart(w http.ResponseWriter, r *http.Request) {
+	render := render.New(render.Options{
+		Layout: "layout",
+	})
 
+	var cart *models.Cart
+
+	cartID := GetShoppingCartID(w, r)
+	cart, _ = GetShoppingCart(server.DB, cartID)
+	items, _ := cart.GetItems(server.DB, cartID)
+
+	_ = render.HTML(w, http.StatusOK, "cart", map[string]interface{}{
+		"cart":  cart,
+		"items": items,
+	})
 }
 
 func GetShoppingCartID(w http.ResponseWriter, r *http.Request) string {
 	session, _ := store.Get(r, sessionShoppingCart)
-
-	fmt.Println(session)
 
 	if session.Values["cart-id"] == nil {
 
@@ -41,7 +54,9 @@ func GetShoppingCart(db *gorm.DB, cartID string) (*models.Cart, error) {
 
 	existCart.CalculateCart(db, cartID)
 
-	return existCart, nil
+	updatedCart, _ := cart.GetCart(db, cartID)
+
+	return updatedCart, nil
 }
 
 func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
@@ -68,6 +83,42 @@ func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
+	}
+
+	http.Redirect(w, r, "/carts", http.StatusSeeOther)
+}
+
+func (server *Server) UpdateCart(w http.ResponseWriter, r *http.Request) {
+	cartID := GetShoppingCartID(w, r)
+	cart, _ := GetShoppingCart(server.DB, cartID)
+
+	for _, item := range cart.CartItems {
+		qty, _ := strconv.Atoi(r.FormValue(item.ID))
+
+		_, err := cart.UpdateItemQty(server.DB, item.ID, qty)
+
+		if err != nil {
+			http.Redirect(w, r, "/carts", http.StatusSeeOther)
+		}
+	}
+
+	http.Redirect(w, r, "/carts", http.StatusSeeOther)
+}
+
+func (server *Server) RemoveItem(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	if vars["id"] == "" {
+		http.Redirect(w, r, "/carts", http.StatusSeeOther)
+	}
+
+	cartID := GetShoppingCartID(w, r)
+	cart, _ := GetShoppingCart(server.DB, cartID)
+
+	err := cart.RemoveItemByID(server.DB, vars["id"])
+
+	if err != nil {
+		http.Redirect(w, r, "/carts", http.StatusSeeOther)
 	}
 
 	http.Redirect(w, r, "/carts", http.StatusSeeOther)
