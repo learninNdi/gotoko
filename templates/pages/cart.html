@@ -64,16 +64,47 @@
                 <div class="table-responsive">
                     <table class="table table-striped">
                         <tr>
-                            <th>Sub Total<th><td>{{ .cart.BaseTotalPrice }}</td>
+                            <th>Sub Total</th><td>{{ .cart.BaseTotalPrice }}</td>
                         </tr>
                         <tr>
-                            <th>Tax ({{ .cart.TaxPercent }}%)<th><td>{{ .cart.TaxAmount }}</td>
+                            <th>Tax ({{ .cart.TaxPercent }}%)</th><td>{{ .cart.TaxAmount }}</td>
                         </tr>
                         <tr>
-                            <th>Shipping<th><td><a href="#" class="btn btn-success btn-sm">Calculate Shipping</a></td>
+                            <th>Shipping</th>
+                                <td>
+                                    <form method="POST" id="calculate-shipping">
+                                        <div id="shipping-calculation-msg"></div>
+                                        <div class="form-group">
+                                            <select name="courier" class="form-control courier">
+                                                <option value="" selected>-- Pilih Kurir --</option>
+                                                <option value="jne">JNE</option>
+                                                <option value="pos">POS</option>
+                                                <option value="tiki">TIKI</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <select name="province_id" class="form-control province_id">
+                                                <option value="" selected>-- Pilih Provinsi --</option>
+                                                {{ range $keyProvince, $province := .provinces }}
+                                                    <option value="{{ $province.ID }}">{{ $province.Name }}</option>
+                                                {{ end }}
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <select name="city_id" class="form-control city_id">
+                                                <option value="">-- Pilih Kabupaten/Kota --</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <select name="shipping-fee" class="form-control shipping_fee_options">
+                                                <option value="">-- Pilih Paket --</option>
+                                            </select>
+                                        </div>
+                                    </form>
+                                </td>
                         </tr>
                         <tr>
-                            <th>Total<th><td>{{ .cart.GrandTotal }}</td>
+                            <th>Total</th><td><strong><span id="grand-total">{{ .cart.GrandTotal }}</span></strong></td>
                         </tr>
                     </table>
                 </div>

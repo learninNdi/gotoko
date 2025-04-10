@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"fmt"
+	"log"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -14,7 +16,8 @@ import (
 
 func (server *Server) GetCart(w http.ResponseWriter, r *http.Request) {
 	render := render.New(render.Options{
-		Layout: "layout",
+		Layout:     "layout",
+		Extensions: []string{".html", ".tmpl"},
 	})
 
 	var cart *models.Cart
@@ -23,9 +26,16 @@ func (server *Server) GetCart(w http.ResponseWriter, r *http.Request) {
 	cart, _ = GetShoppingCart(server.DB, cartID)
 	items, _ := cart.GetItems(server.DB, cartID)
 
+	provinces, err := server.GetProvinces()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	_ = render.HTML(w, http.StatusOK, "cart", map[string]interface{}{
-		"cart":  cart,
-		"items": items,
+		"cart":      cart,
+		"items":     items,
+		"provinces": provinces,
 	})
 }
 
@@ -55,6 +65,20 @@ func GetShoppingCart(db *gorm.DB, cartID string) (*models.Cart, error) {
 	existCart.CalculateCart(db, cartID)
 
 	updatedCart, _ := cart.GetCart(db, cartID)
+
+	totalWeight := 0
+	productModel := models.Product{}
+
+	for _, cartItem := range updatedCart.CartItems {
+		product, _ := productModel.GetProductByID(db, cartItem.ProductID)
+
+		productWeight, _ := product.Weight.Float64()
+		itemWeight := math.Ceil(productWeight * float64(cartItem.Qty))
+
+		totalWeight += int(itemWeight)
+	}
+
+	updatedCart.TotalWeight = totalWeight
 
 	return updatedCart, nil
 }

@@ -11,7 +11,8 @@ import (
 
 func (server *Server) Products(w http.ResponseWriter, r *http.Request) {
 	render := render.New(render.Options{
-		Layout: "layout",
+		Layout:     "layout",
+		Extensions: []string{".html", ".tmpl"},
 	})
 
 	// get query page value
@@ -46,7 +47,8 @@ func (server *Server) Products(w http.ResponseWriter, r *http.Request) {
 
 func (server *Server) GetProduct(w http.ResponseWriter, r *http.Request) {
 	render := render.New(render.Options{
-		Layout: "layout",
+		Layout:     "layout",
+		Extensions: []string{".html", ".tmpl"},
 	})
 
 	vars := mux.Vars(r)
