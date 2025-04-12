@@ -70,6 +70,7 @@ type Result struct {
 var store *sessions.CookieStore
 var sessionShoppingCart = "shopping-cart-session"
 var sessionFlash = "flash-session"
+var sessionUser = "user-session"
 
 func (server *Server) Initialize(appConfig AppConfig, dbConfig DBConfig) {
 	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
@@ -213,8 +214,6 @@ func GetFlash(w http.ResponseWriter, r *http.Request, name string) []string {
 
 	fm := session.Flashes(name)
 
-	fmt.Println("====", fm)
-
 	if len(fm) == 0 {
 		return nil
 	}
@@ -228,4 +227,37 @@ func GetFlash(w http.ResponseWriter, r *http.Request, name string) []string {
 	}
 
 	return flashes
+}
+
+func IsLoggedIn(r *http.Request) bool {
+	session, _ := store.Get(r, sessionUser)
+
+	return session.Values["id"] != nil
+}
+
+// func ComparePassword(password string, hashedPassword string) bool {
+func ComparePassword(password string, savedPassword string) bool {
+	// return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)) == nil
+
+	return password == savedPassword
+}
+
+func (server *Server) CurrentUser(w http.ResponseWriter, r *http.Request) *models.User {
+	if !IsLoggedIn(r) {
+		return nil
+	}
+
+	session, _ := store.Get(r, sessionUser)
+
+	userModel := models.User{}
+	user, err := userModel.FindByID(server.DB, session.Values["id"].(string))
+
+	if err != nil {
+		session.Values["id"] = nil
+		session.Save(r, w)
+
+		return nil
+	}
+
+	return user
 }
