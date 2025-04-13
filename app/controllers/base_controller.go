@@ -12,6 +12,7 @@ import (
 	"github.com/learninNdi/gotoko/app/models"
 	"github.com/learninNdi/gotoko/database/seeders"
 	"github.com/urfave/cli"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -240,6 +241,12 @@ func ComparePassword(password string, savedPassword string) bool {
 	// return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)) == nil
 
 	return password == savedPassword
+}
+
+func MakePassword(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
+	return string(hashedPassword), err
 }
 
 func (server *Server) CurrentUser(w http.ResponseWriter, r *http.Request) *models.User {

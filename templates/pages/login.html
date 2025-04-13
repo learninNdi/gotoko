@@ -35,6 +35,13 @@
                             {{ end }}
                         </div>
                     {{ end }}
+                    {{ if .success }}
+                        <div class="alert alert-success">
+                            {{ range $i, $msg := .success }}
+                            {{ $msg }}<br>
+                            {{ end }}
+                        </div>
+                    {{ end }}
                     <form action="/login" method="POST" role="form">
                         <div class="form-group mb-3">
                             <div class="input-group input-group-alternative">
