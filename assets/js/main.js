@@ -16,6 +16,8 @@ $(function () {
         " - $" + $("#slider-range").slider("values", 1));
     
     let domShippingCalculationMsg = $("#shipping-calculation-msg")
+    let shippingMessage = $("#shipping-message")
+    let shippingDetailMessage = $("#shipping-detail-message")
     
     // get province
     $(".province_id").change(function() {
@@ -56,7 +58,7 @@ $(function () {
             success: function(result) {
                 domShippingCalculationMsg.html("");
                 $.each(result.data, function(_, shipping_fee_option) {
-                    $(".shipping_fee_options").append(`<option value="${shipping_fee_option.service}-${shipping_fee_option.fee}">${shipping_fee_option.fee} (${shipping_fee_option.service})</option>`)
+                    $(".shipping_fee_options").append(`<option value="${shipping_fee_option.service}">${shipping_fee_option.fee} (${shipping_fee_option.service})</option>`)
                 })
             },
             error: function(e) {
@@ -97,5 +99,48 @@ $(function () {
                 domShippingCalculationMsg.html(`<div class="alert alert-warning">Pemilihan paket ongkir gagal!</div>`)
             }
         });
+    });
+
+    $("#checkout-button").click(function(e) {
+        shippingMessage.html("")
+        shippingDetailMessage.html("")
+        
+        let provinceID = $(".province_id").val()
+        let cityID = $(".city_id").val()
+        let courier = $(".courier").val()
+        let shippingFee = $(".shipping_fee_options").val()
+
+        let firstName = $("#first_name").val()
+        let lastName = $("#last_name").val()
+        let address1 = $("#address1").val()
+        let postCode = $("#post_code").val()
+        let phone = $("#phone").val()
+        let email = $("#email").val()
+
+        if(provinceID == "" || cityID == "" || courier == "" || shippingFee == "" ||
+            firstName == "" || lastName == "" || address1 == "" || postCode == ""
+            || phone == "" || email == ""
+        ) {
+            e.preventDefault();            
+
+            if(courier == "") shippingMessage.append(`<div class="alert alert-warning">Kurir belum dipilih</div>`)
+            if(provinceID == "") shippingMessage.append(`<div class="alert alert-warning">Provinsi belum dipilih</div>`)
+            if(cityID == "") shippingMessage.append(`<div class="alert alert-warning">Kabupaten/Kota belum dipilih</div>`)
+            if(shippingFee == "") shippingMessage.append(`<div class="alert alert-warning">Paket belum dipilih</div>`)
+            if(firstName == "") shippingDetailMessage.append(`<div class="alert alert-warning">Nama depan belum dipilih</div>`)
+            if(lastName == "") shippingDetailMessage.append(`<div class="alert alert-warning">Nama belakang belum dipilih</div>`)
+            if(address1 == "") shippingDetailMessage.append(`<div class="alert alert-warning">Alamat 1 depan belum dipilih</div>`)
+            if(postCode == "") shippingDetailMessage.append(`<div class="alert alert-warning">Kode pos depan belum dipilih</div>`)
+            if(phone == "") shippingDetailMessage.append(`<div class="alert alert-warning">Telepon depan belum dipilih</div>`)
+            if(email == "") shippingDetailMessage.append(`<div class="alert alert-warning">Email depan belum dipilih</div>`)
+        }
+
+        // $.ajax({
+        //     url: "/orders/checkout",
+        //     method: "POST",
+        //     success: function (result) {
+        //         console.log("ada")
+        //     },
+        // });
     });
 });

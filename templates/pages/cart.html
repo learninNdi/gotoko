@@ -89,6 +89,7 @@
                                 <th>Shipping</th>
                                     <td>
                                         <div id="shipping-calculation-msg"></div>
+                                        <div id="shipping-message"></div>
                                         <div class="form-group">
                                             <select name="courier" class="form-control courier">
                                                 <option value="" selected>-- Pilih Kurir --</option>
@@ -111,7 +112,7 @@
                                             </select>
                                         </div>
                                         <div class="form-group">
-                                            <select name="shipping-fee" class="form-control shipping_fee_options">
+                                            <select name="shipping_fee" class="form-control shipping_fee_options">
                                                 <option value="">-- Pilih Paket --</option>
                                             </select>
                                         </div>
@@ -121,11 +122,42 @@
                                 <th>Total</th><td><strong><span id="grand-total">{{ .cart.GrandTotal }}</span></strong></td>
                             </tr>
                             <tr>
+                                <th>Detail Pengiriman</th>
+                                <td>
+                                    <div id="shipping-detail-message"></div>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="first_name" id="first_name" placeholder="First Name">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="last_name" id="last_name" value="" placeholder="Last Name">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="address1" id="address1" value="" placeholder="Address 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="address2" value="" placeholder="Address 2">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="post_code" id="post_code" value="" placeholder="Post Code">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="phone" id="phone" value="" placeholder="Phone">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="email" id="email" value="" placeholder="Email">
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="exampleCheck1" class="form-check-input" name="save_address">
+                                        <label for="exampleCheck1" class="form-check-label">Simpan alamat untuk pemesanan selanjutnya</label>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
                                 <th>
                                     &nbsp;
                                 </th>
                                 <td>
-                                    <button type="submit" class="btn btn-success pull-right">Go to Checkout</button>
+                                    <button type="submit" class="btn btn-success pull-right" id="checkout-button">Go to Checkout</button>
                                 </td>
                             </tr>
                         </table>
