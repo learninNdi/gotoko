@@ -1,13 +1,20 @@
 package controllers
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+	"github.com/learninNdi/gotoko/app/consts"
 	"github.com/learninNdi/gotoko/app/models"
+	"github.com/midtrans/midtrans-go"
+	"github.com/midtrans/midtrans-go/snap"
 	"github.com/shopspring/decimal"
+	"github.com/unrolled/render"
 )
 
 type CheckoutRequest struct {
@@ -44,11 +51,15 @@ func (server *Server) Checkout(w http.ResponseWriter, r *http.Request) {
 	if len(items) == 0 {
 		SetFlash(w, r, "error", "Belum ada barang yang dipilih")
 		http.Redirect(w, r, "/carts", http.StatusSeeOther)
+
+		return
 	}
 
 	if !IsLoggedIn(r) {
 		SetFlash(w, r, "error", "Anda harus login terlebih dahulu")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
+
+		return
 	}
 
 	user := server.CurrentUser(w, r)
@@ -59,6 +70,8 @@ func (server *Server) Checkout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		SetFlash(w, r, "error", "Proses checkout gagal")
 		http.Redirect(w, r, "/carts", http.StatusSeeOther)
+
+		return
 	}
 
 	checkoutRequest := &CheckoutRequest{
@@ -86,11 +99,13 @@ func (server *Server) Checkout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		SetFlash(w, r, "error", "Proses checkout gagal")
 		http.Redirect(w, r, "/carts", http.StatusSeeOther)
+
+		return
 	}
 
 	ClearShoppingCart(server.DB, cartID)
 
-	// SetFlash(w, r, "success", "Data order berhasil disimpan")
+	SetFlash(w, r, "success", "Data order berhasil disimpan")
 	http.Redirect(w, r, "/orders/"+order.ID, http.StatusSeeOther)
 }
 
@@ -123,6 +138,13 @@ func (server *Server) GetSelectedShippingCost(w http.ResponseWriter, r *http.Req
 
 func (server *Server) SaveOrder(user *models.User, r *CheckoutRequest) (*models.Order, error) {
 	var orderItems []models.OrderItem
+
+	orderID := uuid.New().String()
+	paymentURL, err := server.createPaymentURL(user, r, orderID)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if len(r.Cart.CartItems) > 0 {
 		for _, cartItem := range r.Cart.CartItems {
@@ -157,13 +179,14 @@ func (server *Server) SaveOrder(user *models.User, r *CheckoutRequest) (*models.
 	}
 
 	orderData := &models.Order{
+		ID:                  orderID,
 		UserID:              user.ID,
 		OrderItems:          orderItems,
 		OrderCustomer:       orderCustomer,
 		Status:              0,
 		OrderDate:           time.Now(),
 		PaymentDue:          time.Now().AddDate(0, 0, 1),
-		PaymentStatus:       "UNPAID",
+		PaymentStatus:       consts.OrderPaymentStatusUnpaid,
 		BaseTotalPrice:      r.Cart.BaseTotalPrice,
 		TaxAmount:           r.Cart.TaxAmount,
 		TaxPercent:          r.Cart.TaxPercent,
@@ -173,6 +196,7 @@ func (server *Server) SaveOrder(user *models.User, r *CheckoutRequest) (*models.
 		GrandTotal:          r.Cart.GrandTotal,
 		ShippingCourier:     r.ShippingFee.Courier,
 		ShippingServiceName: r.ShippingFee.PackageName,
+		PaymentToken:        sql.NullString{String: paymentURL, Valid: true},
 	}
 
 	orderModel := models.Order{}
@@ -183,4 +207,64 @@ func (server *Server) SaveOrder(user *models.User, r *CheckoutRequest) (*models.
 	}
 
 	return order, nil
+}
+
+func (server *Server) ShowOrder(w http.ResponseWriter, r *http.Request) {
+	render := render.New(render.Options{
+		Layout:     "layout",
+		Extensions: []string{".html", ".tmpl"},
+	})
+
+	vars := mux.Vars(r)
+
+	if vars["id"] == "" {
+		http.Redirect(w, r, "/products", http.StatusSeeOther)
+
+		return
+	}
+
+	orderModel := models.Order{}
+	order, err := orderModel.FindByID(server.DB, vars["id"])
+
+	if err != nil {
+		http.Redirect(w, r, "/products", http.StatusSeeOther)
+
+		return
+	}
+
+	_ = render.HTML(w, http.StatusOK, "show_order", map[string]interface{}{
+		"order":   order,
+		"success": GetFlash(w, r, "success"),
+		"user":    server.CurrentUser(w, r),
+	})
+}
+
+func (server *Server) createPaymentURL(user *models.User, r *CheckoutRequest, orderID string) (string, error) {
+	midtransServerKey := os.Getenv("API_MIDTRANS_KEY")
+
+	midtrans.ServerKey = midtransServerKey
+
+	var enabledPaymentTypes []snap.SnapPaymentType
+	enabledPaymentTypes = append(enabledPaymentTypes, snap.AllSnapPaymentType...)
+
+	snapRequest := &snap.Request{
+		TransactionDetails: midtrans.TransactionDetails{
+			OrderID:  orderID,
+			GrossAmt: r.Cart.GrandTotal.IntPart(),
+		},
+		CustomerDetail: &midtrans.CustomerDetails{
+			FName: user.FirstName,
+			LName: user.LastName,
+			Email: user.Email,
+		},
+		EnabledPayments: enabledPaymentTypes,
+	}
+
+	snapResponse, err := snap.CreateTransaction(snapRequest)
+
+	if err != nil {
+		return "", err
+	}
+
+	return snapResponse.RedirectURL, nil
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/learninNdi/gotoko/app/consts"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -115,4 +116,58 @@ func intToRoman(num int) string {
 	}
 
 	return roman
+}
+
+func (o *Order) FindByID(db *gorm.DB, id string) (*Order, error) {
+	var order Order
+
+	err := db.Debug().
+		Preload("OrderCustomer").
+		Preload("OrderItems").
+		Preload("OrderItems.Product").
+		Preload("User").
+		Model(&Order{}).Where("id = ?", id).
+		First(&order).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &order, nil
+}
+
+func (o *Order) GetStatusLabel() string {
+	var statusLabel string
+
+	switch o.Status {
+	case consts.OrderStatusPending:
+		statusLabel = "PENDING"
+	case consts.OrderStatusDelivered:
+		statusLabel = "DELIVERED"
+	case consts.OrderStatusReceived:
+		statusLabel = "RECEIVED"
+	case consts.OrderStatusCancelled:
+		statusLabel = "CANCELLED"
+	default:
+		statusLabel = "UNKNOWN"
+	}
+
+	return statusLabel
+}
+
+func (o *Order) IsPaid() bool {
+	return o.PaymentStatus == consts.OrderPaymentStatusPaid
+}
+
+func (o *Order) MarkAsPaid(db *gorm.DB) error {
+	o.PaymentStatus = consts.OrderPaymentStatusPaid
+	o.Status = 1
+
+	err := db.Save(o).Error
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
